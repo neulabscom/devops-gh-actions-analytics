@@ -17,8 +17,10 @@ def upload():
 
 def fromfile():
     st.write('## From Report')
-    reports = [file for file in os.listdir(
-        'src/reports') if file.endswith('.csv')]
+
+    basepath = 'reports'
+
+    reports = [file for file in os.listdir(basepath) if file.endswith('.csv')]
 
     reports.insert(0, None)
 
@@ -30,7 +32,7 @@ def fromfile():
 
     st.write('You selected:', filename_selected)
 
-    report_path = os.path.join('src/reports', filename_selected)
+    report_path = os.path.join(basepath, filename_selected)
 
     if not os.path.isfile(report_path):
         raise FileNotFoundError(f'Report not found: {report_path}')
@@ -113,56 +115,78 @@ def stats(df: pd.DataFrame):
         users.area_chart(_by_username(name))
 
 
-def homepage():
-    st.write('# GitHub Actions Analytics 📊')
-
-    st.markdown(
-        """
-![Last Commit](https://img.shields.io/github/last-commit/neulabscom/github-actions-analytics/main)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/neulabscom/github-actions-analytics/blob/main/LICENSE)
-
-This application allows you to view GitHub's "Usage Report" data.
-
-It gives a generic overview of which users and repositories use actions the most and allows each repository to see how many and when workflows are executed.
-
-It is built with [Streamlit](https://streamlit.io/), a Python library for building data apps, and pandas, a Python library for data analysis.
-
-*GitHub Actions Analytics is in beta.*
-
-## How does it work?
-
-**Requirements**:
-
-- Python >= 3.8
-
-**Run the following command to start the application**:
-
-```bash
-
-$ chmod +x scripts/setup.sh && ./scripts/setup.sh
-
-$ # *Download Github report and save in `src/reports/`
-
-$ streamlit run src/main.py
-```
-
-* Read the [GitHub Docs](https://docs.github.com/en/billing/managing-billing-for-github-actions/viewing-your-github-actions-usage) for download "Usage Report"
-
-    """
+def config():
+    st.set_page_config(
+        page_title='GitHub Actions Analytics',
+        page_icon='📊',
+        initial_sidebar_state='expanded'
     )
 
-    upload()
-    fromfile()
+
+def homepage():
+    def _head():
+        st.write('# GitHub Actions Analytics 📊')
+        st.markdown(
+            """
+    ![Last Commit](https://img.shields.io/github/last-commit/neulabscom/github-actions-analytics/main)
+    [![License](https://img.shields.io/github/license/neulabscom/github-actions-analytics)](https://github.com/neulabscom/github-actions-analytics/blob/main/LICENSE)
+
+    This application allows you to view GitHub's "Usage Report" data.
+
+    It gives a generic overview of which users and repositories use actions the most and allows each repository to see how many and when workflows are executed.
+
+    It is built with [Streamlit](https://streamlit.io/), a Python library for building data apps, and pandas, a Python library for data analysis.
+
+
+    Read the [GitHub Docs](https://docs.github.com/en/billing/managing-billing-for-github-actions/viewing-your-github-actions-usage) for download "Usage Report"
+
+    *GitHub Actions Analytics is in beta.*
+        """
+        )
+
+    def _content():
+        upload()
+        fromfile()
+
+    def _footer():
+        st.markdown(
+            """
+    ----
+
+    #### Run from local?
+
+    **Requirements**:
+
+    - Python >= 3.8
+
+    **Run the following command to start the application**:
+
+    ```bash
+
+    $ chmod +x scripts/setup.sh && ./scripts/setup.sh
+
+    $ # Download Github report and save in `reports/` folder
+
+    $ streamlit run src/main.py
+    ```
+
+    #### Powered by **Neulabs**
+
+    Website: [neulabs.com](https://neulabs.com)
+
+    Repository: [GitHub](https://github.com/neulabscom)
+
+        """
+        )
+
+    _head()
+    _content()
+    _footer()
 
 
 def main():
-    page_names_to_funcs = {
-        'Home': homepage,
-        'Stats': stats,
-    }
-
-    selectbox = st.sidebar.selectbox('Select page', page_names_to_funcs.keys())
-    page_names_to_funcs[selectbox]()
+    config()
+    homepage()
 
 
 if __name__ == '__main__':
