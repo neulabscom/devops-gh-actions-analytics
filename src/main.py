@@ -5,21 +5,52 @@ import pandas as pd
 import streamlit as st
 
 
-def load(report_path: str):
+def upload():
+    uploaded_file = st.file_uploader('Choose a file')
+    if uploaded_file is None:
+        return
+
+    df = parser(pd.read_csv(uploaded_file))
+
+    stats(df)
+
+
+def fromfile():
+    st.write('## From Report')
+    reports = [file for file in os.listdir(
+        'src/reports') if file.endswith('.csv')]
+
+    reports.insert(0, None)
+
+    filename_selected = st.selectbox(
+        'How would you like to be contacted?', reports, 0)
+
+    if not filename_selected:
+        return None
+
+    st.write('You selected:', filename_selected)
+
+    report_path = os.path.join('src/reports', filename_selected)
+
     if not os.path.isfile(report_path):
         raise FileNotFoundError(f'Report not found: {report_path}')
 
-    dataset = pd.read_csv(report_path)
-    dataset['Actions Workflow'] = dataset['Actions Workflow'].map(
+    df = parser(pd.read_csv(report_path))
+
+    stats(df)
+
+
+def parser(df: pd.DataFrame):
+    df['Actions Workflow'] = df['Actions Workflow'].map(
         lambda x: x.split('/')[-1] if type(x) == str else x)
-    dataset.drop(dataset[dataset.Product != 'Actions'].index, inplace=True)
+    df.drop(df[df.Product != 'Actions'].index, inplace=True)
 
-    return dataset
+    return df
 
 
-def stats(filename_selected):
+def stats(df: pd.DataFrame):
     def _all_users():
-        data = dataset.groupby(['Username']).sum('Quantity')
+        data = df.groupby(['Username']).sum('Quantity')
         chart = pd.DataFrame(
             data,
             columns=['Quantity']
@@ -27,7 +58,7 @@ def stats(filename_selected):
         return chart
 
     def _all_repositories():
-        data = dataset.groupby(['Repository Slug']).sum('Quantity')
+        data = df.groupby(['Repository Slug']).sum('Quantity')
         chart = pd.DataFrame(
             data,
             columns=['Quantity']
@@ -35,7 +66,7 @@ def stats(filename_selected):
         return chart
 
     def _by_action_workflow(name: str):
-        data = dataset.where(dataset['Repository Slug'] == name).groupby(
+        data = df.where(df['Repository Slug'] == name).groupby(
             ['Actions Workflow']).sum('Quantity')
         chart = pd.DataFrame(
             data,
@@ -44,7 +75,7 @@ def stats(filename_selected):
         return chart
 
     def _by_date(name: str):
-        data = dataset.where(dataset['Repository Slug'] == name).groupby(
+        data = df.where(df['Repository Slug'] == name).groupby(
             ['Date']).sum('Quantity')
         chart = pd.DataFrame(
             data,
@@ -53,7 +84,7 @@ def stats(filename_selected):
         return chart
 
     def _by_username(name: str):
-        data = dataset.where(dataset['Repository Slug'] == name).groupby(
+        data = df.where(df['Repository Slug'] == name).groupby(
             ['Username']).sum('Quantity')
         chart = pd.DataFrame(
             data,
@@ -61,15 +92,13 @@ def stats(filename_selected):
         )
         return chart
 
-    dataset = load(f'src/reports/{filename_selected}')
-
     st.write('## Overview')
     overview_users, overview_repositories = st.tabs(
         ['🗃 All Users', '📈 All Repositories'])
     overview_users.bar_chart(_all_users())
     overview_repositories.area_chart(_all_repositories())
 
-    for name, value in dataset.groupby(['Repository Slug']).all().iterrows():
+    for name, value in df.groupby(['Repository Slug']).all().iterrows():
         st.write('## Repository ' + name)
         workflow, timestamp, users = st.tabs(
             ['🗃 Actions', '📈 Date', '👩‍💻 Users'])
@@ -122,14 +151,8 @@ $ streamlit run src/main.py
     """
     )
 
-    st.write('## Report')
-    reports = [file for file in os.listdir(
-        'src/reports') if file.endswith('.csv')]
-    filename_selected = st.selectbox(
-        'How would you like to be contacted?', reports)
-    if filename_selected:
-        st.write('You selected:', filename_selected)
-        stats(filename_selected)
+    upload()
+    fromfile()
 
 
 def main():
