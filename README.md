@@ -1,6 +1,6 @@
 # Github Actions Analytics
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://neulabscom-github-actions-analytics-srcmain-rb6cj8.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://gh-actions-analytics.streamlit.app/)
 
 ![Last Commit](https://img.shields.io/github/last-commit/neulabscom/github-actions-analytics/main)
 [![License](https://img.shields.io/github/license/neulabscom/github-actions-analytics)](https://github.com/neulabscom/github-actions-analytics/blob/main/LICENSE)
