@@ -27,6 +27,8 @@ Read the [GitHub Docs](https://docs.github.com/en/billing/managing-billing-for-g
 
 $ chmod +x scripts/setup.sh && ./scripts/setup.sh
 
+$ source .activate
+
 $ # Download Github report and save in `src/reports/`
 
 $ streamlit run src/main.py

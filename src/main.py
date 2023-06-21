@@ -95,10 +95,19 @@ def stats(df: pd.DataFrame):
         return chart
 
     st.write('## Overview')
+
+    st.write('**Actions runned by Users**')
+    quantity = df.groupby(['Username', 'Repository Slug']).sum(
+        'Quantity').filter(['Quantity'])
+    st.write(quantity)
+
     overview_users, overview_repositories = st.tabs(
-        ['🗃 All Users', '📈 All Repositories'])
+        ['🗃 Users', '📈 All Repositories'])
+    overview_users.write('**Total usage of workflows by users**')
     overview_users.bar_chart(_all_users())
-    overview_repositories.area_chart(_all_repositories())
+    overview_repositories.write('**Total usage of workflows by repositories**')
+    overview_repositories.bar_chart(
+        _all_repositories(), use_container_width=True, )
 
     for name, value in df.groupby(['Repository Slug']).all().iterrows():
         st.write('## Repository ' + name)
@@ -106,13 +115,13 @@ def stats(df: pd.DataFrame):
             ['🗃 Actions', '📈 Date', '👩‍💻 Users'])
 
         workflow.write('**Usage of workflows for the repository**')
-        workflow.bar_chart(_by_action_workflow(name))
+        workflow.bar_chart(_by_action_workflow(name), use_container_width=True)
 
         timestamp.write('**Usage of workflows for the repository by date**')
-        timestamp.line_chart(_by_date(name))
+        timestamp.line_chart(_by_date(name), use_container_width=True)
 
         users.write('**Usage of workflows for the repository by users**')
-        users.area_chart(_by_username(name))
+        users.bar_chart(_by_username(name), use_container_width=True)
 
 
 def config():
@@ -164,6 +173,8 @@ def homepage():
     ```bash
 
     $ chmod +x scripts/setup.sh && ./scripts/setup.sh
+
+    $ source .activate
 
     $ # Download Github report and save in `reports/` folder
 
