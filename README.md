@@ -13,8 +13,6 @@ It is built with [Streamlit](https://streamlit.io/), a Python library for buildi
 
 Read the [GitHub Docs](https://docs.github.com/en/billing/managing-billing-for-github-actions/viewing-your-github-actions-usage) for download "Usage Report"
 
-*GitHub Actions Analytics is in beta.*
-
 ## Run from local?
 
 **Requirements**:

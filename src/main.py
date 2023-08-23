@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 
@@ -45,6 +46,9 @@ def fromfile():
 def parser(df: pd.DataFrame):
     df['Actions Workflow'] = df['Actions Workflow'].map(
         lambda x: x.split('/')[-1] if type(x) == str else x)
+
+    df['date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+
     df.drop(df[df.Product != 'Actions'].index, inplace=True)
 
     return df
@@ -58,6 +62,103 @@ def stats(df: pd.DataFrame):
             columns=['Quantity']
         )
         return chart
+
+    def _cost_date_range():
+        def _by_compute(latest_invoce_data: pd.DataFrame, before_invoce_data: pd.DataFrame, price: float, minute_included: int = 0):
+            latest_invoce_result = latest_invoce_data.where(df['Price Per Unit ($)'] == price).groupby([
+                'Date']).sum('Quantity').filter(['Quantity'])
+            before_invoce_result = before_invoce_data.where(df['Price Per Unit ($)'] == price).groupby([
+                'Date']).sum('Quantity').filter(['Quantity'])
+
+            chart = pd.DataFrame(
+                latest_invoce_result,
+                columns=['Quantity']
+            )
+
+            minute = round(latest_invoce_result.values.sum(), 2)
+            total = 0 if minute_included >= minute else round(
+                (minute - minute_included) * price, 2)
+
+            before_minute = round(before_invoce_result.values.sum(), 2)
+            before_total = 0 if minute_included >= before_minute else round(
+                (before_minute - minute_included) * price, 2)
+
+            return {
+                'chart': chart,
+                'invoce': {
+                    'latest': {
+                        'minute_included': minute_included,
+                        'minute': minute,
+                        'price': price,
+                        'total': total
+                    },
+                    'before_latest': {
+                        'minute_included': minute_included,
+                        'minute': before_minute,
+                        'price': price,
+                        'total': before_total
+                    }
+                },
+                'delta': {
+                    'minute': round(minute - before_minute, 2),
+                    'total': round(total - before_total, 2),
+                    'percent': round(((total - before_total) / before_total) * 100, 2) if before_total != 0 else 0
+                }
+            }
+
+        today = datetime.datetime.now()
+        if today.day >= 15:
+            day_start = datetime.date(today.year, today.month - 1, 15)
+            day_end = datetime.date(today.year, today.month, 15)
+        else:
+            day_start = datetime.date(today.year, today.month - 2, 15)
+            day_end = datetime.date(today.year, today.month - 1, 15)
+        day_max = datetime.date(today.year, today.month, today.day)
+        # Github report max 180 days ago
+        day_min = day_max - datetime.timedelta(180)
+
+        date_range = st.date_input(
+            'Select invoce date range (Github billing cycle is 15th to 15th of each month)',
+            (day_start, day_end),
+            day_min,
+            day_max
+        )
+
+        if len(date_range) == 2:
+            start, end = date_range
+        else:
+            start = date_range[0]
+            end = day_end
+
+        st.warning(
+            f'Latest invoce from {day_start} to {day_end} (selected range: {start} to {end})')
+
+        latest_invoce_data = df.loc[(df['Date'] >= start.strftime('%Y-%m-%d'))
+                                    & (df['Date'] < end.strftime('%Y-%m-%d'))]
+
+        before_invoce_day_start = datetime.date(
+            day_start.year, day_start.month - 1, 15)
+        before_invoce_day_end = datetime.date(
+            day_end.year, day_end.month - 1, 15)
+        before_invoce_data = df.loc[(df['Date'] >= before_invoce_day_start.strftime('%Y-%m-%d'))
+                                    & (df['Date'] < before_invoce_day_end.strftime('%Y-%m-%d'))]
+
+        ubuntu = _by_compute(latest_invoce_data,
+                             before_invoce_data, 0.008, 3000)
+        mac = _by_compute(latest_invoce_data, before_invoce_data, 0.016)
+        windows = _by_compute(latest_invoce_data, before_invoce_data, 0.08)
+
+        data = {
+            'ubuntu': ubuntu,
+            'mac': mac,
+            'windows': windows,
+            'date': {
+                'selected': (day_start, day_end),
+                'before': (before_invoce_day_start, before_invoce_day_end)
+            }
+        }
+
+        return data
 
     def _all_repositories():
         data = df.groupby(['Repository Slug']).sum('Quantity')
@@ -94,15 +195,51 @@ def stats(df: pd.DataFrame):
         )
         return chart
 
+    def _print_invoces_cost(name: str, data: object, date: object):
+        st.write(f'**{name}**')
+
+        col_minute, col_total, col_difference = st.columns(3)
+        col_minute.metric('Minutes', f"{data['invoce']['latest']['minute']} min",
+                          f"{data['delta']['minute']} min", delta_color='inverse')
+        col_total.metric('Total cost', f"{data['invoce']['latest']['total']}$",
+                         f"{data['delta']['total']}$", delta_color='inverse')
+        col_difference.metric(
+            'Cost difference', f"{data['delta']['percent']} %", f'', delta_color='off')
+
+        if not (data['invoce']['latest']['minute'] == 0 or data['invoce']['before_latest']['minute'] == 0):
+            st.write(f'''
+    Selected range
+    - From {date["selected"][0].strftime("%Y-%m-%d")} to {date["selected"][1].strftime("%Y-%m-%d")}
+    - Minutes included: {data["invoce"]["latest"]["minute_included"]}
+    - Minutes runned: {data["invoce"]["latest"]["minute"]}
+    - Total cost: {data["invoce"]["latest"]["total"]}$ ({data["invoce"]["latest"]["minute"] - data["invoce"]["latest"]["minute_included"]} * {data["invoce"]["latest"]["price"]} price per minute)
+    ''')
+            st.write(f'''
+    30 days before range
+    - From {date["before"][0].strftime("%Y-%m-%d")} to {date["before"][1].strftime("%Y-%m-%d")}
+    - Minutes included: {data["invoce"]["before_latest"]["minute_included"]}
+    - Minutes runned: {data["invoce"]["before_latest"]["minute"]}
+    - Total cost: {data["invoce"]["before_latest"]["total"]}$ ({data["invoce"]["before_latest"]["minute"] - data["invoce"]["before_latest"]["minute_included"]} * {data["invoce"]["before_latest"]["price"]} price per minute)
+    ''')
+            st.area_chart(data['chart'], use_container_width=True)
+
+    st.write('## Actions runner Costs')
+
+    invoces_cost = _cost_date_range()
+    _print_invoces_cost('Ubuntu', invoces_cost['ubuntu'], invoces_cost['date'])
+    _print_invoces_cost('Mac', invoces_cost['mac'], invoces_cost['date'])
+    _print_invoces_cost(
+        'Windows', invoces_cost['windows'], invoces_cost['date'])
+
     st.write('## Overview')
 
-    st.write('**Actions runned by Users**')
+    st.write('**Actions runner by Users**')
     quantity = df.groupby(['Username', 'Repository Slug']).sum(
         'Quantity').filter(['Quantity'])
     st.write(quantity)
-
     overview_users, overview_repositories = st.tabs(
         ['🗃 Users', '📈 All Repositories'])
+
     overview_users.write('**Total usage of workflows by users**')
     overview_users.bar_chart(_all_users())
     overview_repositories.write('**Total usage of workflows by repositories**')
@@ -148,8 +285,6 @@ def homepage():
 
 
     Read the [GitHub Docs](https://docs.github.com/en/billing/managing-billing-for-github-actions/viewing-your-github-actions-usage) for download "Usage Report"
-
-    *GitHub Actions Analytics is in beta.*
         """
         )
 
