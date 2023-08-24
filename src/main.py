@@ -166,7 +166,7 @@ def stats(df: pd.DataFrame):
             date_range_end = day_end
 
         date_range_difference_in_day = (
-            date_range_end - date_range_start).days - 1
+            date_range_end - date_range_start).days
 
         st.warning(
             f'Latest invoce from {day_start} to {day_end} (selected {date_range_difference_in_day} days: {date_range_start} to {date_range_end})')
@@ -177,7 +177,7 @@ def stats(df: pd.DataFrame):
         before_invoce_day_start = date_range_start - \
             datetime.timedelta(date_range_difference_in_day)
         before_invoce_day_end = date_range_end - \
-            datetime.timedelta(date_range_difference_in_day + 1)
+            datetime.timedelta(date_range_difference_in_day)
         before_invoce_data = df.loc[(df['Date'] >= before_invoce_day_start.strftime('%Y-%m-%d'))
                                     & (df['Date'] < before_invoce_day_end.strftime('%Y-%m-%d'))]
 
